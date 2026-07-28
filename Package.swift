@@ -93,11 +93,32 @@ if let pod_archive_path = ProcessInfo.processInfo.environment["ORT_POD_LOCAL_PAT
 
 } else {
     // ORT release
+    //
+    // FORK NOTE (VANTA, 2026-07-29): this binaryTarget was repointed at a
+    // self-hosted build to fix two real bugs in Microsoft's own
+    // 1.24.2 binary that broke TestFlight distribution:
+    //   1. Missing/empty MinimumOSVersion in the framework's Info.plist
+    //      (ITMS-90208 "does not support the minimum OS Version specified in
+    //      the Info.plist" -- confirmed open upstream: microsoft/onnxruntime#27396,
+    //      microsoft/onnxruntime-swift-package-manager#36/#37).
+    //   2. No dSYMs at all -- the binary ships fully stripped with no debug
+    //      info, so crashes inside onnxruntime's own code can never
+    //      symbolicate. Confirmed via dwarfdump: Microsoft's binary has no
+    //      Mach-O UUID and empty .debug_info; this rebuild has real UUIDs and
+    //      full DWARF info embedded as proper per-slice dSYMs inside the
+    //      xcframework (Apple's native -create-xcframework -debug-symbols
+    //      mechanism), so Xcode picks them up automatically at archive time.
+    // Built from the unmodified upstream v1.24.2 source via
+    // tools/ci_build/github/apple/build_and_assemble_apple_pods.py with
+    // --config RelWithDebInfo (same settings file, same feature set --
+    // CoreML + XNNPACK -- as Microsoft's own release; only the macOS
+    // deployment target was bumped 14.0->15.0, which CoreML's own APIs
+    // already required but weren't guarded for). No source changes.
     package.targets.append(
        Target.binaryTarget(name: "onnxruntime",
-                           url: "https://download.onnxruntime.ai/pod-archive-onnxruntime-c-1.24.2.zip",
+                           url: "https://github.com/xiaobryans/onnxruntime-swift-package-manager/releases/download/1.24.2/pod-archive-onnxruntime-c-1.24.2-with-symbols.zip",
                            // SHA256 checksum
-                           checksum: "f7100a992d2a8135168c8afd831e6a58b465349101982aa58b3e11d36e600b54")
+                           checksum: "cbac3317d49d155fb73a08cfb2a92dcfcc278e48adbf102b397fa80af5d64e8e")
     )
 }
 
